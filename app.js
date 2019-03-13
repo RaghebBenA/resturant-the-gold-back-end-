@@ -3,6 +3,8 @@ var express = require("express");
 var path = require("path");
 var cookieParser = require("cookie-parser");
 var logger = require("morgan");
+const session = require("express-session");
+const FileStore = require("session-file-store")(session);
 
 var indexRouter = require("./routes/index");
 var usersRouter = require("./routes/users");
@@ -33,17 +35,25 @@ app.set("view engine", "jade");
 app.use(logger("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser('15256-20305-40489-49478'));
+//app.use(cookieParser("15256-20305-40489-49478"));
+
+app.use(
+  session({
+    name: "session-id",
+    secret: "15256-20305-40489-49478",
+    saveUninitialized: false,
+    resave: false,
+    store: new FileStore()
+  })
+);
 
 function auth(req, res, next) {
-  console.log(req.signedCookies);
-
+  console.log(req.session);
 
   /*Declaring condional statment to see if the user doesn't send the authentication header
    we will send the login process */
 
-   if(!req.signedCookies.user){
-
+  if (!req.session.user) {
     const authHeader = req.headers.authorization;
 
     /*Declare conditional statement to indentify if the user doesn't send authentication header
@@ -52,7 +62,7 @@ function auth(req, res, next) {
 
     if (!authHeader) {
       const err = new Error("You are not authenticated");
-  
+
       res.setHeader("WWW-Authenticate", "Basic");
       err.status = 401;
       next(err);
@@ -62,39 +72,37 @@ function auth(req, res, next) {
     const auth = new Buffer.from(authHeader.split(" ")[1], "base64")
       .toString()
       .split(":");
-  
+
     //Declare the two vars username and password and assing to each one a value of the auth array index 0 and 1
     const username = auth[0];
     const password = auth[1];
-  
+
     //Declare conditional statment for the user authenication state with given userName and passWord default values
     //Second step  if the user authentication math thoes values will move it to the next step with next() method
     //If not we will generate error and challange the user to give the correct authentication values
     if (username === "admin" && password === "password") {
-      res.cookie('user','admin',{signed: true})
+      req.session.user = "admin";
       next();
     } else {
       const err = new Error("You are not authenticated");
-  
+
       res.setHeader("WWW-Authenticate", "Basic");
       err.status = 401;
-       return next(err);
+      return next(err);
     }
-   }
-   /*if the cookies exist and the singIn header exist and they are eqaul
+  } else {
+    /*if the cookies exist and the singIn header exist and they are eqaul
     to the value then allow the request to pass throw with next() */
-   else {
-     if(req.signedCookies.user === 'admin'){
-       next()
-     }
-     else{
+    if (req.session.user === "admin") {
+      next();
+    } else {
       const err = new Error("You are not authenticated");
-  
+
       res.setHeader("WWW-Authenticate", "Basic");
       err.status = 401;
-       return next(err);
-     }
-   }
+      return next(err);
+    }
+  }
 }
 
 app.use(auth);
