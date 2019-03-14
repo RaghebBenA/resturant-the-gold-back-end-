@@ -46,60 +46,22 @@ app.use(
     store: new FileStore()
   })
 );
+app.use("/", indexRouter);
+app.use("/users", usersRouter);
 
 function auth(req, res, next) {
   console.log(req.session);
 
-  /*Declaring condional statment to see if the user doesn't send the authentication header
-   we will send the login process */
-
   if (!req.session.user) {
-    const authHeader = req.headers.authorization;
-
-    /*Declare conditional statement to indentify if the user doesn't send authentication header
-     so we will generate an error and we 
-      will challange him to send the authenication header*/
-
-    if (!authHeader) {
-      const err = new Error("You are not authenticated");
-
-      res.setHeader("WWW-Authenticate", "Basic");
-      err.status = 401;
-      next(err);
-    }
-    //Declare the authnication method with using that will split the Authentication header and converted to base64
-    //Second part change the base64 to string and solit it by ':'
-    const auth = new Buffer.from(authHeader.split(" ")[1], "base64")
-      .toString()
-      .split(":");
-
-    //Declare the two vars username and password and assing to each one a value of the auth array index 0 and 1
-    const username = auth[0];
-    const password = auth[1];
-
-    //Declare conditional statment for the user authenication state with given userName and passWord default values
-    //Second step  if the user authentication math thoes values will move it to the next step with next() method
-    //If not we will generate error and challange the user to give the correct authentication values
-    if (username === "admin" && password === "password") {
-      req.session.user = "admin";
-      next();
-    } else {
-      const err = new Error("You are not authenticated");
-
-      res.setHeader("WWW-Authenticate", "Basic");
-      err.status = 401;
-      return next(err);
-    }
+    var err = new Error("You are not authenticated!");
+    err.status = 403;
+    return next(err);
   } else {
-    /*if the cookies exist and the singIn header exist and they are eqaul
-    to the value then allow the request to pass throw with next() */
-    if (req.session.user === "admin") {
+    if (req.session.user === "authenticated") {
       next();
     } else {
-      const err = new Error("You are not authenticated");
-
-      res.setHeader("WWW-Authenticate", "Basic");
-      err.status = 401;
+      var err = new Error("You are not authenticated!");
+      err.status = 403;
       return next(err);
     }
   }
@@ -108,9 +70,6 @@ function auth(req, res, next) {
 app.use(auth);
 
 app.use(express.static(path.join(__dirname, "public")));
-
-app.use("/", indexRouter);
-app.use("/users", usersRouter);
 app.use("/dishes", dishRouter);
 app.use("/promotion", promotionRouter);
 app.use("/leaders", leadersRouter);
